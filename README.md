@@ -8,3 +8,5 @@ Typing the server names separated by spaces into the servers text box and clicki
 
 You can also add a file named "servers.txt" to the directory of __main__.py with one server name on each line.
 This will load the "Server:" text box on launch
+
+Use RunAsAdmin.bat to run the script as a network admin.
