@@ -12,6 +12,7 @@ from kivy.uix.popup import Popup
 from kivy.properties import StringProperty
 
 
+# A dialog box for confirming you want to kill a session.
 class ConfirmPopup(BoxLayout):
     text = StringProperty()
     title = StringProperty()
@@ -45,6 +46,7 @@ class ConfirmPopup(BoxLayout):
         self.popup.dismiss()
 
 
+# Makes the main table of the app
 class MakeTable(BoxLayout):
     def appeandtotable(self, output, server, table):
         for line in output.splitlines():
@@ -61,22 +63,25 @@ class MakeTable(BoxLayout):
                 # print(line)
                 table.append(cells)
 
-    def ConfirmKillSession(self, instance):
+    # Launches a dialog box for confirming you want to kill a session.
+    def confirmkillsession(self, instance):
         data = instance.__name__
 
-        ConfirmPopup(self.KillSession, text='Do You Want To Kill This Session?', title="Kill Session?", data=data)
+        ConfirmPopup(self.killsession, text='Do You Want To Kill This Session?', title="Kill Session?", data=data)
 
-    def KillSession(self, session):
+    # Kills a windows user session based on the ID
+    def killsession(self, session):
         data = session.split("|")
         command = ("LOGOFF {} /server:{}").format(data[0], data[1])
         # print(command)
         os.system(command)
         self.__init__()
 
-    def RefreshSession(self, instance):
+    # Refreshes the list of users
+    def refreshsession(self, instance):
         instance.text = "Refreshing"
 
-        df = self.fillData(self.txtServers.text)
+        df = self.filldata(self.txtservers.text)
 
         self.databox.clear_widgets()
 
@@ -84,21 +89,23 @@ class MakeTable(BoxLayout):
             if row['SERVER'] is not None:
                 grid = GridLayout()
                 grid.cols = 3
-                btnKill = Button(text="Kill Session: {}".format(row['ID']))
-                btnKill.__name__ = "{}|{}".format(row['ID'], row['SERVER'])
-                btnKill.bind(on_press=self.ConfirmKillSession)
-                grid.add_widget(btnKill)
-                lblUser = Label(text=row['USERNAME'])
-                grid.add_widget(lblUser)
-                lblServer = Label(text=row['SERVER'])
-                grid.add_widget(lblServer)
+                btnkill = Button(text="Kill Session: {}".format(row['ID']))
+                btnkill.__name__ = "{}|{}".format(row['ID'], row['SERVER'])
+                btnkill.bind(on_press=self.confirmkillsession)
+                grid.add_widget(btnkill)
+                lbluser = Label(text=row['USERNAME'])
+                grid.add_widget(lbluser)
+                lblserver = Label(text=row['SERVER'])
+                grid.add_widget(lblserver)
                 self.databox.add_widget(grid)
 
         instance.text = "Refresh"
         print("Refresh")
 
-    def fillData(self, svrs):
+    # Gets the data from a windows QWINSTA command
+    def filldata(self, svrs):
         if len(svrs) > 0:
+            print(svrs)
             servers = svrs.split(" ")
             table = []
             for server in servers:
@@ -107,18 +114,21 @@ class MakeTable(BoxLayout):
                     self.appeandtotable(output, server, table)
                 except:
                     print("Server: {} - Does Not Exists".format(server))
-
-            df = pandas.DataFrame(table)
-            new_header = ["SESSIONAME", "USERNAME", "ID", "STATE", "TYPE", "SERVER"]
-            df.columns = new_header  # set the header row as the df header
-            df = df.sort_values(['USERNAME', "ID", 'SERVER'])
-            # print(df)
-            return df
+            if len(table) > 0:
+                df = pandas.DataFrame(table)
+                new_header = ["SESSIONAME", "USERNAME", "ID", "STATE", "TYPE", "SERVER"]
+                df.columns = new_header  # set the header row as the df header
+                df = df.sort_values(['USERNAME', "ID", 'SERVER'])
+                # print(df)
+                return df
+            else:
+                df = pandas.DataFrame()
+                return df
         else:
             df = pandas.DataFrame()
             return df
 
-
+    # Application Init
     def __init__(self, **kwargs):
         super(MakeTable, self).__init__(**kwargs)
 
@@ -130,26 +140,27 @@ class MakeTable(BoxLayout):
 
         servergrid = GridLayout()
         servergrid.cols = 3
-        lblServers = Label(text="Servers: ")
-        servergrid.add_widget(lblServers)
-        self.txtServers = TextInput(text='', multiline=True)
-        servergrid.add_widget(self.txtServers)
+        lblservers = Label(text="Servers: ")
+        servergrid.add_widget(lblservers)
+        self.txtservers = TextInput(text='', multiline=True)
+        servergrid.add_widget(self.txtservers)
         header.add_widget(servergrid)
 
+        # Loads server names from a file if it exists
         fname = "servers.txt"
         if os.path.isfile(fname):
             with open(fname) as f:
                 content = f.readlines()
             content = [x.strip() for x in content]
-            self.txtServers.text = " ".join(content)
+            self.txtservers.text = " ".join(content)
         else:
             print("No Servers File Found")
 
 
-        btnRefresh = Button(text="Refresh")
-        btnRefresh.id = "btnRefresh"
-        btnRefresh.bind(on_press=self.RefreshSession)
-        header.add_widget(btnRefresh)
+        btnrefresh = Button(text="Refresh")
+        btnrefresh.id = "btnRefresh"
+        btnrefresh.bind(on_press=self.refreshsession)
+        header.add_widget(btnrefresh)
 
         self.add_widget(header)
 
@@ -159,8 +170,7 @@ class MakeTable(BoxLayout):
 
         self.add_widget(self.databox)
 
-        self.RefreshSession(self)
-
+        self.refreshsession(self)
 
 
 class UserControl(App):

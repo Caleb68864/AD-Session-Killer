@@ -1,4 +1,4 @@
-# AD-Session-Killer
+# AD Session Killer
 App I wrote that lists users on Windows servers and makes it easy to kill their sessions
 
 Currently it only works for citrix sessions, but modifying this line "if line.startswith(' ica-cgp#'):" should allow managing other types of user sessions.
