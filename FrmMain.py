@@ -54,6 +54,7 @@ class FrmMain ( wx.Frame ):
 		
 		self.SetSizer( gbSizer1 )
 		self.Layout()
+		self.statusBar = self.CreateStatusBar( 1, 0, wx.ID_ANY )
 		
 		self.Centre( wx.BOTH )
 		

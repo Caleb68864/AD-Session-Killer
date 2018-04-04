@@ -3,6 +3,7 @@ import os.path
 import subprocess
 import pandas
 import wx
+import datetime
 import FrmMain
 
 
@@ -24,11 +25,12 @@ class Main(wx.Frame):
                 self.killsession(sess_id, server)
                 self.refreshsession()
         else:
-            print("No Session Selected")
+            self.statusBar.SetStatusText("No Session Selected")
 
     def btnClearClick(self, instance):
         self.lcUsers.DeleteAllItems()
         self.txtServers.SetValue("")
+        self.statusBar.SetStatusText("")
 
     def resizeCols(self, cols):
         for i in range(cols):
@@ -67,7 +69,7 @@ class Main(wx.Frame):
                 self.lcUsers.Append(row)
 
         self.resizeCols(len(df.columns))
-        # print("Refresh")
+        self.statusBar.SetStatusText("Table Updated: {}".format(datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')))
 
     # Gets the data from a windows QWINSTA command
     def filldata(self, svrs):
@@ -84,12 +86,12 @@ class Main(wx.Frame):
 
             for server in servers:
                 try:
-                    print("Server: {} - Found!".format(server))
+                    self.statusBar.SetStatusText("Server: {} - Found!".format(server))
                     output = subprocess.check_output("QWINSTA /server:{}".format(server), shell=False)
                     # print(output)
                     self.appeandtotable(output, server, table)
                 except:
-                    print("Server: {} - Does Not Exists".format(server))
+                    self.statusBar.SetStatusText("Server: {} - Does Not Exists".format(server))
 
             # print(len(table))
             if len(table) > 0:
@@ -102,7 +104,7 @@ class Main(wx.Frame):
                 print("DF Table is Empty")
                 return df
         else:
-            print("No Servers Given")
+            self.statusBar.SetStatusText("No Servers Given")
             return df
 
     # Kills a windows user session based on the ID
