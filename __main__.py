@@ -2,52 +2,34 @@ import os
 import os.path
 import subprocess
 import pandas
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.button import Button
-from kivy.uix.popup import Popup
-from kivy.properties import StringProperty
+import wx
+import FrmMain
 
 
-# A dialog box for confirming you want to kill a session.
-class ConfirmPopup(BoxLayout):
-    text = StringProperty()
-    title = StringProperty()
-    data = StringProperty()
+class Main(wx.Frame):
+    def btnRefershClick(self, instance):
+        self.refreshsession()
 
-    def __init__(self, callback, **kwargs):
-        self.callback = callback
-        self.orientation = 'vertical'
-        super(ConfirmPopup, self).__init__(**kwargs)
-        self.add_widget(Label(text=self.text))
-        yesno = GridLayout(cols=2)
-        btnyes = Button(text='Yes')
-        yesno.add_widget(btnyes)
-        btnno = Button(text='No')
-        yesno.add_widget(btnno)
+    def btnKillClick(self, instance):
+        index = self.lcUsers.GetFocusedItem()
+        if index >= 0:
+            print(index, self.lcUsers.GetItem(index, 2).GetText())
+            id = self.lcUsers.GetItem(index, 2).GetText()
+            server = self.lcUsers.GetItem(index, 5).GetText()
+            self.killsession(id, server)
+            self.refreshsession()
+        else:
+            print("No Session Selected")
 
-        self.add_widget(yesno)
+    def btnClearClick(self, instance):
+        self.lcUsers.DeleteAllItems()
+        self.txtServers.SetValue("")
 
-        self.popup = Popup(title=self.title,
-                           content=self,
-                           size_hint=(None, None),
-                           size=(480, 200),
-                           auto_dismiss=False)
-        btnyes.bind(on_release=self.choseyesno)
-        btnno.bind(on_release=self.popup.dismiss)
-        self.popup.open()
+    def resizeCols(self, cols):
+        for i in range(cols):
+            self.lcUsers.SetColumnWidth(i, -2)
+            # self.lcUsers.SetColumnWidth(i, -1)
 
-    def choseyesno(self, yn):
-        # print(yn.text)
-        self.callback(self.data)
-        self.popup.dismiss()
-
-
-# Makes the main table of the app
-class MakeTable(BoxLayout):
     def appeandtotable(self, output, server, table):
         for line in output.splitlines():
             # print(type(line))
@@ -61,90 +43,77 @@ class MakeTable(BoxLayout):
                     line = line + "|" + server
                 cells = line.split("|")
                 # print(line)
+                # print(cells)
                 table.append(cells)
 
-    # Launches a dialog box for confirming you want to kill a session.
-    def confirmkillsession(self, instance):
-        data = instance.__name__
-
-        ConfirmPopup(self.killsession, text='Do You Want To Kill This Session?', title="Kill Session?", data=data)
-
-    # Kills a windows user session based on the ID
-    def killsession(self, session):
-        data = session.split("|")
-        command = ("LOGOFF {} /server:{}").format(data[0], data[1])
-        # print(command)
-        os.system(command)
-        self.__init__()
-
     # Refreshes the list of users
-    def refreshsession(self, instance):
-        instance.text = "Refreshing"
+    def refreshsession(self):
+        self.lcUsers.DeleteAllItems()
+        df = self.filldata(self.txtServers.GetValue())
 
-        df = self.filldata(self.txtservers.text)
-
-        self.databox.clear_widgets()
+        new_header = ["SESSIONNAME", "USERNAME", "ID", "STATE", "TYPE", "SERVER"]
+        df.columns = new_header  # set the header row as the df header
+        df = df.sort_values(['USERNAME', "ID", 'SERVER'])
 
         for index, row in df.iterrows():
             if row['SERVER'] is not None:
-                grid = GridLayout()
-                grid.cols = 3
-                btnkill = Button(text="Kill Session: {}".format(row['ID']))
-                btnkill.__name__ = "{}|{}".format(row['ID'], row['SERVER'])
-                btnkill.bind(on_press=self.confirmkillsession)
-                grid.add_widget(btnkill)
-                lbluser = Label(text=row['USERNAME'])
-                grid.add_widget(lbluser)
-                lblserver = Label(text=row['SERVER'])
-                grid.add_widget(lblserver)
-                self.databox.add_widget(grid)
+                self.lcUsers.Append(row)
 
-        instance.text = "Refresh"
-        print("Refresh")
+        self.resizeCols(len(df.columns))
+        # print("Refresh")
 
     # Gets the data from a windows QWINSTA command
     def filldata(self, svrs):
+        table = [["", "", "", "", "", ""]]
+        # table = [["Test 1", "Test 2", "Test 3", "Test 4", "Test 5", "Test 6"],
+        #          ["Test 1", "Test 2", "Test 3", "Test 4", "Test 5", "Test 6"]]
+        df = pandas.DataFrame(table)
+        new_header = ["SESSIONNAME", "USERNAME", "ID", "STATE", "TYPE", "SERVER"]
+        df.columns = new_header  # set the header row as the df header
+        table = []
         if len(svrs) > 0:
-            print(svrs)
+            # print(svrs)
             servers = svrs.split(" ")
-            table = []
+
             for server in servers:
                 try:
+                    print("Server: {} - Found!".format(server))
                     output = subprocess.check_output("QWINSTA /server:{}".format(server), shell=False)
+                    # print(output)
                     self.appeandtotable(output, server, table)
                 except:
                     print("Server: {} - Does Not Exists".format(server))
+
+            # print(len(table))
             if len(table) > 0:
+                # print(table)
                 df = pandas.DataFrame(table)
-                new_header = ["SESSIONAME", "USERNAME", "ID", "STATE", "TYPE", "SERVER"]
-                df.columns = new_header  # set the header row as the df header
-                df = df.sort_values(['USERNAME', "ID", 'SERVER'])
-                # print(df)
+                # df = df.sort_values(['USERNAME', "ID", 'SERVER'])
+                print(df)
                 return df
             else:
-                df = pandas.DataFrame()
+                print("DF Table is Empty")
                 return df
         else:
-            df = pandas.DataFrame()
+            print("No Servers Given")
             return df
 
-    # Application Init
-    def __init__(self, **kwargs):
-        super(MakeTable, self).__init__(**kwargs)
+    # Kills a windows user session based on the ID
+    def killsession(self, id, server):
+        command = ("LOGOFF {} /server:{}").format(id, server)
+        print(command)
+        os.system(command)
 
-        self.clear_widgets()
-        self.orientation = 'vertical'
+    def __init__(self, parent):
+        FrmMain.FrmMain.__init__(self, parent)
+        df = self.filldata("")
+        ldf = list(df)
+        for header in ldf:
+            self.lcUsers.AppendColumn(header)
 
-        header = BoxLayout()
-        header.orientation = 'vertical'
+        self.resizeCols(len(ldf))
 
-        servergrid = GridLayout()
-        servergrid.cols = 3
-        lblservers = Label(text="Servers: ")
-        servergrid.add_widget(lblservers)
-        self.txtservers = TextInput(text='', multiline=True)
-        servergrid.add_widget(self.txtservers)
-        header.add_widget(servergrid)
+        # print(self.lcUsers.GetColumnCount())
 
         # Loads server names from a file if it exists
         fname = "servers.txt"
@@ -152,31 +121,16 @@ class MakeTable(BoxLayout):
             with open(fname) as f:
                 content = f.readlines()
             content = [x.strip() for x in content]
-            self.txtservers.text = " ".join(content)
+            self.txtServers.SetValue(" ".join(content))
         else:
             print("No Servers File Found")
 
+        self.refreshsession()
 
-        btnrefresh = Button(text="Refresh")
-        btnrefresh.id = "btnRefresh"
-        btnrefresh.bind(on_press=self.refreshsession)
-        header.add_widget(btnrefresh)
-
-        self.add_widget(header)
-
-        self.databox = BoxLayout()
-        self.databox.clear_widgets()
-        self.databox.orientation = 'vertical'
-
-        self.add_widget(self.databox)
-
-        self.refreshsession(self)
-
-
-class UserControl(App):
-    def build(self):
-        return MakeTable()
+        self.Show(True)
 
 
 if __name__ == '__main__':
-    UserControl().run()
+    app = wx.App(False)
+    frame = Main(None)
+    app.MainLoop()
