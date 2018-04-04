@@ -13,11 +13,16 @@ class Main(wx.Frame):
     def btnKillClick(self, instance):
         index = self.lcUsers.GetFocusedItem()
         if index >= 0:
-            print(index, self.lcUsers.GetItem(index, 2).GetText())
-            id = self.lcUsers.GetItem(index, 2).GetText()
+            #print(index, self.lcUsers.GetItem(index, 2).GetText())
+            user = self.lcUsers.GetItem(index, 1).GetText()
+            sess_id = self.lcUsers.GetItem(index, 2).GetText()
             server = self.lcUsers.GetItem(index, 5).GetText()
-            self.killsession(id, server)
-            self.refreshsession()
+            dlg = wx.MessageDialog(None, "Do you want to kill {}'s session?".format(user), 'Kill Session?', wx.YES_NO | wx.ICON_QUESTION)
+            result = dlg.ShowModal()
+
+            if result == wx.ID_YES:
+                self.killsession(sess_id, server)
+                self.refreshsession()
         else:
             print("No Session Selected")
 
