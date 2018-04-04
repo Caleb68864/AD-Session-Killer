@@ -34,13 +34,15 @@ class Main(wx.Frame):
         for line in output.splitlines():
             # print(type(line))
             line = line.decode("utf-8")
-            if line.startswith(' ica-cgp#'):
+            if line.startswith((' ica-cgp#', ' rdp-tcp#')):
                 for i in range(30, 1, -1):
                     line = line.replace(" " * i, "|")
-                if line[-1:] == "|":
-                    line = line + server
-                else:
-                    line = line + "|" + server
+
+                line = line.rstrip("|")
+                if line.startswith(' rdp-tcp#'):
+                    line = line + "|RDP"
+
+                line = line + "|" + server
                 cells = line.split("|")
                 # print(line)
                 # print(cells)
